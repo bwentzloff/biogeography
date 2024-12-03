@@ -1,0 +1,201 @@
+---
+title: "Analyzing the contribution of rainfall in Rapoport Effect for Eastern U.S. tree species"
+author: "Brian Wentzloff"
+date: "2024-11-26"
+output:
+  html_document:
+    css: custom-theme.css
+    toc: true
+    toc_float: true
+    self_contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+## Research Question
+
+The research question in my study will be if rainfall variability contributes to the climatic variability hypothesis that seems to be a mechanism for Rapoport’s Rule.
+
+## Background and Rationale
+
+Rapoport’s rule states that as latitudes increase, the geographical range of species increases. Morin and Lechowicz have determined that this is not due to physical continental constraints, but is consistent with the climatic variability hypothesis. (Morin, 2011) This hypothesis states that as the climate is more variable, the species in that environment need to be adapted to handle the more extreme ends of the climate spectrum, thereby allowing them to increase range size since they are better equipped to handle variability. The reason these studies are interesting is that as our planet’s climate continues to change, it will be helpful to know the effect of that change on range sizes for current species.
+	Pinter et al investigated the effect of temperature variations on several species in Australia. Their results supported the climatic variability hypothesis as a mechanism for Rapoport’s Rule. Their study investigated both average temperatures as well as minimums and maximums to determine an accurate temperature variation gradient. (Pinter, 2015)
+	Zhu et al investigated migrations due to climate change by looking at juvenile and adult tree abundances. They were attempting to determine any migration lag in the expansion of tree ranges. In order to do this, they used a measure called abundance which was calculated using the area’s mean temperature and rainfall. (Zhu, 2014)
+	While it is interesting that Zhu considered the amount of rainfall in species range, they used mean figures for rainfall. Rapoport’s Rule deals with variability of climate variables. Therefore, it would be interesting to run a similar analysis as Pinter’s team, but look at rainfall extremes to determine if it is consequential in Eastern U.S. tree species ranges.
+
+## Hypothesis
+
+**TODO: This hypothesis is out of date. Update to latest hypothesis.
+
+The research question in my study will be if rainfall variability contributes to the climatic variability hypothesis that seems to be a mechanism for Rapoport’s Rule. My hypothesis is that in areas with more rainfall variability, we will see greater range sizes for tree species.
+
+## Results
+
+**TODO: start with a ggplot of the Eastern U.S. with ranges of all tree species displayed **
+
+**TODO: break this up into fewer chunks of code and provide paragraph explanations between each chunk**
+
+```{r, echo=TRUE,results='hide',fig.keep='all'}
+library(ggplot2)
+library(dplyr)
+library(sf)
+library(rnaturalearth)
+library(classInt)
+library(gridExtra)
+library(eHOF)
+library(showtext)
+font_add_google("Roboto", "roboto")
+showtext_auto()
+
+
+# From FIA_tree_master, we want to get precipitation data instead of IV data
+# TODO: comments on this process.
+
+getwd()
+setwd("~/Downloads")
+getwd()
+tree <- readRDS("~/Downloads/FIA_tree_master1.RDS")
+#head(tree)
+#str(tree)
+
+### IV calculation
+# TODO: Clean this up. There are leftover lines of code from IV calculation
+tree <- tree %>%
+  mutate(BA = DIA * 0.005454)
+
+IV_data <-  tree %>%
+  group_by(GRIDID, SPCD, COMMON_NAME, PrecipMean) %>%
+  summarise(TotalBA_SPCD = sum(BA, na.rm = TRUE),
+            TotalST_SPCD = n()) %>%
+  ungroup() %>%
+  left_join(
+    tree %>%
+      group_by(GRIDID, LAT, LON) %>%
+      summarise(TotalBA_GRID = sum(BA, na.rm = TRUE),
+                TotalST_GRID = n()), by = "GRIDID") %>%
+  mutate(RBA = TotalBA_SPCD/TotalBA_GRID,
+         RST = TotalST_SPCD/TotalST_GRID)
+
+#head(IV_data, n=50)
+#summary(IV_data)
+# save IV_data as rds
+saveRDS(IV_data, "IV_data.RDS")
+iv_data <- readRDS("IV_data.RDS")
+
+######## end loading RDS
+
+##### this is a theme to make ggplots look better. This code will be hidden in the final document
+## TODO: hide this theme code
+theme_custom <- function(base_size = 12, base_family = "Roboto") {
+  theme_minimal(base_size = base_size, base_family = base_family) +
+    theme(
+      # Background and panel
+      plot.background = element_rect(fill = "#f9f9f9", color = NA),
+      panel.background = element_rect(fill = "#ffffff", color = NA),
+      panel.border = element_blank(),
+      panel.grid.major = element_line(color = "#e0e0e0"),
+      panel.grid.minor = element_line(color = "#f0f0f0"),
+
+      # Text elements
+      text = element_text(color = "#333333"),
+      plot.title = element_text(
+        size = 16,
+        face = "bold",
+        color = "#1e3d59",
+        hjust = 0.5,
+        margin = margin(t = 10, b = 10)
+      ),
+      plot.subtitle = element_text(
+        size = 14,
+        face = "italic",
+        color = "#1e3d59",
+        hjust = 0.5,
+        margin = margin(t = 5, b = 10)
+      ),
+      axis.title = element_text(size = 12, color = "#1e3d59"),
+      axis.text = element_text(size = 10, color = "#666666"),
+
+      # Legend
+      legend.background = element_rect(fill = "#eaf6f6", color = NA),
+      legend.key = element_rect(fill = "#ffffff", color = NA),
+      legend.title = element_text(face = "bold", color = "#1e3d59"),
+      legend.text = element_text(color = "#333333"),
+
+      # Strips (for facets)
+      strip.background = element_rect(fill = "#1e3d59", color = NA),
+      strip.text = element_text(size = 12, face = "bold", color = "#ffffff")
+    )
+}
+
+custom_palette <- c(
+  "Accent1" = "#1e3d59",  # Dark Blue
+  "Accent2" = "#e76f51",  # Coral
+  "Accent3" = "#2a9d8f",  # Teal
+  "Accent4" = "#e9c46a",  # Yellow
+  "Accent5" = "#264653"   # Deep Green
+)
+
+
+####### end of theme code
+
+#names(iv_data)
+hof_plot <- function(species){
+  red_maple_data <- iv_data %>%
+    filter(COMMON_NAME == species)
+  lat_seq <- seq(from = floor(min(red_maple_data$LAT)), to = ceiling(max(red_maple_data$LAT)), by = 0.5)
+  red_maple_bands <- data.frame(
+    Lat_band = lat_seq,
+    avg_precip = numeric(length(lat_seq))
+  )
+  for (i in 1:length(lat_seq)){
+    lat_min <- lat_seq[i] - 0.5
+    lat_max <- lat_seq[i] + 0.5
+    band_data <- red_maple_data %>%
+      filter(LAT >= lat_min & LAT <= lat_max)
+    red_maple_bands$avg_precip[i] <- mean(band_data$PrecipMean, na.rm = TRUE)
+  }
+  red_maple_bands <- red_maple_bands[complete.cases(red_maple_bands$avg_precip),]
+  hof_model <- HOF(
+    red_maple_bands$avg_precip,
+    red_maple_bands$Lat_band,
+    modeltypes = c("I","II","III","IV","V"),
+    family = gaussian,
+    bootstrap = 100,
+    test = 'AIC'
+  )
+  best_model <- pick.model(hof_model, modeltypes = c("I","II","III","IV","V"), test = 'AIC')
+  predicted_response <- predict(hof_model, model = best_model, 
+                                newdata = seq(min(red_maple_bands$Lat_band), max(red_maple_bands$Lat_band), by = 0.1))
+  scaled_response <- predicted_response * max(red_maple_bands$avg_precip)
+  ggplot(red_maple_bands, aes(x = Lat_band, y = avg_precip)) +
+    theme_custom() +
+    geom_point() + 
+    geom_line(data = data.frame(lat_band = seq(min(red_maple_bands$Lat_band), 
+                                               max(red_maple_bands$Lat_band), by = 0.1),
+                                predicted_IV = scaled_response),
+              aes(x = lat_band, y = predicted_IV), values=custom_palette) +
+    geom_vline(xintercept = Para(hof_model, model = best_model)$opt, color = "red", linetype = "dashed") +
+    labs(
+      title = paste("Latitudinal IV pattern", species),
+      subtitle = "",
+      x = "latitude",
+      y = "Precipitation Mean"
+    )
+  
+}
+
+hof_plot("American beech")
+#unique(iv_data$COMMON_NAME)
+
+```
+
+## TODO
+
+- figure out how to hide those percentages when HOF is started
+- do the same analysis for each species (in a loop)
+- do the same analysis for rainfall extremes (min and max)
+- create table for each species that shows how well the curve fit
+- with time remaining, do the same analysis for other major abiotic factors and compare them to show which has most importance in ranges
+- create discussion/conclusion
