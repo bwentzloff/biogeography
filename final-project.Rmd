@@ -1,10 +1,10 @@
 ---
-title: "Analyzing the contribution of rainfall in Rapoport Effect for Eastern U.S. tree species"
+title: "Analyzing the contribution of rainfall variability in Rapoport Effect for Eastern U.S. tree species"
 author: "Brian Wentzloff"
-date: "2024-11-26"
+date: "2024-12-13"
 output:
   html_document:
-    css: custom-theme.css
+    css: custom-theme.css 
     toc: true
     toc_float: true
     self_contained: true
@@ -14,152 +14,134 @@ output:
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
-## Research Question
+## Introduction
 
-The research question in my study will be if rainfall variability contributes to the climatic variability hypothesis that seems to be a mechanism for Rapoport’s Rule.
-
-## Background and Rationale
+### Background
 
 Rapoport’s rule states that as latitudes increase, the geographical range of species increases. Morin and Lechowicz have determined that this is not due to physical continental constraints, but is consistent with the climatic variability hypothesis. (Morin, 2011) This hypothesis states that as the climate is more variable, the species in that environment need to be adapted to handle the more extreme ends of the climate spectrum, thereby allowing them to increase range size since they are better equipped to handle variability. The reason these studies are interesting is that as our planet’s climate continues to change, it will be helpful to know the effect of that change on range sizes for current species.
-	Pinter et al investigated the effect of temperature variations on several species in Australia. Their results supported the climatic variability hypothesis as a mechanism for Rapoport’s Rule. Their study investigated both average temperatures as well as minimums and maximums to determine an accurate temperature variation gradient. (Pinter, 2015)
-	Zhu et al investigated migrations due to climate change by looking at juvenile and adult tree abundances. They were attempting to determine any migration lag in the expansion of tree ranges. In order to do this, they used a measure called abundance which was calculated using the area’s mean temperature and rainfall. (Zhu, 2014)
-	While it is interesting that Zhu considered the amount of rainfall in species range, they used mean figures for rainfall. Rapoport’s Rule deals with variability of climate variables. Therefore, it would be interesting to run a similar analysis as Pinter’s team, but look at rainfall extremes to determine if it is consequential in Eastern U.S. tree species ranges.
 
-## Hypothesis
+Pintor et al investigated the effect of temperature variations on several species in Australia. Their results supported the climatic variability hypothesis as a mechanism for Rapoport’s Rule. Their study investigated both average temperatures as well as minimums and maximums to determine an accurate temperature variation gradient. (Pintor, 2015)
 
-**TODO: This hypothesis is out of date. Update to latest hypothesis.
+Zhu et al investigated migrations due to climate change by looking at juvenile and adult tree abundances. They were attempting to determine any migration lag in the expansion of tree ranges. In order to do this, they used a measure called abundance which was calculated using the area’s mean temperature and rainfall. (Zhu, 2014)
 
-The research question in my study will be if rainfall variability contributes to the climatic variability hypothesis that seems to be a mechanism for Rapoport’s Rule. My hypothesis is that in areas with more rainfall variability, we will see greater range sizes for tree species.
+While it is interesting that Zhu considered the amount of rainfall in species range, they used mean figures for rainfall. Rapoport’s Rule deals with variability of climate variables. Therefore, it would be interesting to run a similar analysis as Pintor’s team, but look at precipitation extremes to determine if it is consequential in Eastern U.S. tree species ranges.
 
-## Results
+### Hypothesis
 
-**TODO: start with a ggplot of the Eastern U.S. with ranges of all tree species displayed **
+My hypothesis is that as rainfall variability increases, the range for a particular tree species will increase.
 
-**TODO: break this up into fewer chunks of code and provide paragraph explanations between each chunk**
+### Data
 
-```{r, echo=TRUE,results='hide',fig.keep='all'}
-library(ggplot2)
+This hypothesis can be tested using data from the U.S. Forest Services' Forest Inventory and Analysis data. It provides grid data in the form of latitudes and longitudes and (among other things) low, mean, and high precipitation amounts for each grid parcel.
+	
+## Methods
+
+To test this hypothesis, FIA data was used to first plot the ranges of particular species. Shape files were used to plot the Eastern United States on a graph of longitude and latitude. The shape files contained the entire U.S. so they were filtered to only study the Eastern U.S.
+
+```{r, echo=TRUE,results='hide',fig.keep='last'}
+# load the necessary libraries for entire script.
 library(dplyr)
-library(sf)
+library(tidyr)
+library(ggplot2)
 library(rnaturalearth)
+library(rnaturalearthdata)
 library(classInt)
 library(gridExtra)
+library(sf)
+library(patchwork)
 library(eHOF)
-library(showtext)
-font_add_google("Roboto", "roboto")
-showtext_auto()
 
+# read in the shape files as a list
+usa_states <- st_read("~/stateshapes/states.shp")
 
-# From FIA_tree_master, we want to get precipitation data instead of IV data
-# TODO: comments on this process.
+# filter the eastern states
+selected_states <- usa_states %>%
+  filter(STATE_NAME %in% c("Alabama", "Connecticut", "Delaware", "Florida", "Georgia", "Illinois", "Indiana", "Kentucky", "Maine", "Maryland", "Massachusetts", "Michigan", "Mississippi", "New Hampshire", "New Jersey", "New York", "North Carolina", "Ohio", "Pennsylvania", "Rhode Island", "South Carolina", "Tennessee", "Vermont", "Virginia", "West Virginia", "Wisconsin"))
 
-getwd()
-setwd("~/Downloads")
-getwd()
-tree <- readRDS("~/Downloads/FIA_tree_master1.RDS")
-#head(tree)
-#str(tree)
+# plot latitude vs. longitude
+plot <- ggplot() +
+  geom_sf(data = selected_states, fill = "grey", color = "black") +
+  theme_minimal() +
+  labs(title = "Eastern U.S.",x = "Longitude", y = "Latitude")
 
-### IV calculation
-# TODO: Clean this up. There are leftover lines of code from IV calculation
-tree <- tree %>%
-  mutate(BA = DIA * 0.005454)
+caption <- grid::textGrob("Figure 1: A visual layout of the eastern U.S.", gp = grid::gpar(fontsize = 10), hjust = 0.5)
+final_plot <- gridExtra::grid.arrange(plot, caption, ncol = 1, heights = c(4, 0.5))
+```
 
-IV_data <-  tree %>%
-  group_by(GRIDID, SPCD, COMMON_NAME, PrecipMean) %>%
-  summarise(TotalBA_SPCD = sum(BA, na.rm = TRUE),
-            TotalST_SPCD = n()) %>%
-  ungroup() %>%
-  left_join(
-    tree %>%
-      group_by(GRIDID, LAT, LON) %>%
-      summarise(TotalBA_GRID = sum(BA, na.rm = TRUE),
-                TotalST_GRID = n()), by = "GRIDID") %>%
-  mutate(RBA = TotalBA_SPCD/TotalBA_GRID,
-         RST = TotalST_SPCD/TotalST_GRID)
+Ranges for the various tree species in the FIA data could then be plotted on the map of the eastern U.S. Here is the range of the sweetgum species, which primarily exists in the southern part of the eastern U.S.:
 
-#head(IV_data, n=50)
-#summary(IV_data)
-# save IV_data as rds
-saveRDS(IV_data, "IV_data.RDS")
-iv_data <- readRDS("IV_data.RDS")
+```{r, echo=TRUE,results='hide',fig.keep='last'}
 
-######## end loading RDS
+species_name = "sweetgum"
+raw_data <- readRDS("~/FIA_tree_master1.RDS")
+single_species_grouped_by_name <- raw_data %>%
+  group_by(COMMON_NAME) %>%
+  filter(COMMON_NAME == species_name)
 
-##### this is a theme to make ggplots look better. This code will be hidden in the final document
-## TODO: hide this theme code
-theme_custom <- function(base_size = 12, base_family = "Roboto") {
-  theme_minimal(base_size = base_size, base_family = base_family) +
-    theme(
-      # Background and panel
-      plot.background = element_rect(fill = "#f9f9f9", color = NA),
-      panel.background = element_rect(fill = "#ffffff", color = NA),
-      panel.border = element_blank(),
-      panel.grid.major = element_line(color = "#e0e0e0"),
-      panel.grid.minor = element_line(color = "#f0f0f0"),
+plot <- ggplot() +
+  geom_sf(data = selected_states, fill = "grey", color = "lightblue") +
+  geom_point(data = single_species_grouped_by_name, aes(x = LON, y = LAT), size = 0.5) +
+  theme_minimal() +
+  labs(title = "Sweetgum",x = "Longitude", y = "Latitude") +
+  theme(plot.margin = grid::unit(c(1, 1, 1, 1), "lines"))
 
-      # Text elements
-      text = element_text(color = "#333333"),
-      plot.title = element_text(
-        size = 16,
-        face = "bold",
-        color = "#1e3d59",
-        hjust = 0.5,
-        margin = margin(t = 10, b = 10)
-      ),
-      plot.subtitle = element_text(
-        size = 14,
-        face = "italic",
-        color = "#1e3d59",
-        hjust = 0.5,
-        margin = margin(t = 5, b = 10)
-      ),
-      axis.title = element_text(size = 12, color = "#1e3d59"),
-      axis.text = element_text(size = 10, color = "#666666"),
+caption <- grid::textGrob("Figure 2: Range of tree species sweetgum.", gp = grid::gpar(fontsize = 10), hjust = 0.5)
 
-      # Legend
-      legend.background = element_rect(fill = "#eaf6f6", color = NA),
-      legend.key = element_rect(fill = "#ffffff", color = NA),
-      legend.title = element_text(face = "bold", color = "#1e3d59"),
-      legend.text = element_text(color = "#333333"),
+final_plot <- gridExtra::grid.arrange(plot, caption, ncol = 1, heights = c(4, 0.5))
 
-      # Strips (for facets)
-      strip.background = element_rect(fill = "#1e3d59", color = NA),
-      strip.text = element_text(size = 12, face = "bold", color = "#ffffff")
-    )
-}
+```
 
-custom_palette <- c(
-  "Accent1" = "#1e3d59",  # Dark Blue
-  "Accent2" = "#e76f51",  # Coral
-  "Accent3" = "#2a9d8f",  # Teal
-  "Accent4" = "#e9c46a",  # Yellow
-  "Accent5" = "#264653"   # Deep Green
-)
+Next, the variability of precipitation within that range can be calculated by the simple equation `maxiumum precipitation - minimum precipitation`
 
+```{r, echo=TRUE,results='hide',fig.keep='last'}
 
-####### end of theme code
+species_name = "sweetgum"
+# group by species and add calculated column precipitation range
+raw_data <- readRDS("~/FIA_tree_master1.RDS")
+single_species_grouped_by_name <- raw_data %>%
+  group_by(COMMON_NAME) %>%
+  filter(COMMON_NAME == species_name) %>%
+  mutate(Precip_range = abs(Precip_wet - Precip_dry))
 
-#names(iv_data)
-hof_plot <- function(species){
-  red_maple_data <- iv_data %>%
-    filter(COMMON_NAME == species)
-  lat_seq <- seq(from = floor(min(red_maple_data$LAT)), to = ceiling(max(red_maple_data$LAT)), by = 0.5)
-  red_maple_bands <- data.frame(
+plot <- ggplot() +
+  geom_sf(data = selected_states, fill = "grey", color = "lightblue") +
+  geom_point(data = single_species_grouped_by_name, aes(x = LON, y = LAT, color=Precip_range), size = 0.5) +
+  theme_minimal() +
+  labs(title = paste(species_name,"precipitation variability (mm)"),x = "Longitude", y = "Latitude")
+
+caption <- grid::textGrob("Figure 3: Precipitation range of sweetgum across Eastern U.S. The lighter the blue, the higher the range of precipitation", gp = grid::gpar(fontsize = 10), hjust = 0.5)
+
+final_plot <- gridExtra::grid.arrange(plot, caption, ncol = 1, heights = c(4, 0.5))
+```
+
+Now that there is a latitude associated with precipitation range data, latitudes were divided into 0.5 degree bands. For each band, the moving average precipitation variability for that entire band was calculated. The results were scaled and a model of best fit was determined:
+
+```{r, echo=TRUE,results='hide',fig.keep='none'}
+hof_plot <- function(species, simple_title=FALSE, return_intercept=FALSE){
+  # group by species and add calculated column precipitation range
+  single_species_grouped_by_name <- raw_data %>%
+    group_by(COMMON_NAME) %>%
+    filter(COMMON_NAME == species) %>%
+    mutate(Precip_range = abs(Precip_wet - Precip_dry))
+
+  # 0.5 degree bands with a moving average of 1.0 degree for each band
+  lat_seq <- seq(from = floor(min(single_species_grouped_by_name$LAT)), to = ceiling(max(single_species_grouped_by_name$LAT)), by = 0.5)
+  bands <- data.frame(
     Lat_band = lat_seq,
-    avg_precip = numeric(length(lat_seq))
+    precip_range = numeric(length(lat_seq))
   )
+
   for (i in 1:length(lat_seq)){
     lat_min <- lat_seq[i] - 0.5
     lat_max <- lat_seq[i] + 0.5
-    band_data <- red_maple_data %>%
+    band_data <- single_species_grouped_by_name %>%
       filter(LAT >= lat_min & LAT <= lat_max)
-    red_maple_bands$avg_precip[i] <- mean(band_data$PrecipMean, na.rm = TRUE)
+    bands$precip_range[i] <- mean(band_data$Precip_range, na.rm = TRUE)
   }
-  red_maple_bands <- red_maple_bands[complete.cases(red_maple_bands$avg_precip),]
+  bands <- bands[complete.cases(bands$precip_range),]
   hof_model <- HOF(
-    red_maple_bands$avg_precip,
-    red_maple_bands$Lat_band,
+    bands$precip_range,
+    bands$Lat_band,
     modeltypes = c("I","II","III","IV","V"),
     family = gaussian,
     bootstrap = 100,
@@ -167,35 +149,191 @@ hof_plot <- function(species){
   )
   best_model <- pick.model(hof_model, modeltypes = c("I","II","III","IV","V"), test = 'AIC')
   predicted_response <- predict(hof_model, model = best_model, 
-                                newdata = seq(min(red_maple_bands$Lat_band), max(red_maple_bands$Lat_band), by = 0.1))
-  scaled_response <- predicted_response * max(red_maple_bands$avg_precip)
-  ggplot(red_maple_bands, aes(x = Lat_band, y = avg_precip)) +
-    theme_custom() +
-    geom_point() + 
-    geom_line(data = data.frame(lat_band = seq(min(red_maple_bands$Lat_band), 
-                                               max(red_maple_bands$Lat_band), by = 0.1),
+                                newdata = seq(min(bands$Lat_band), max(bands$Lat_band), by = 0.1))
+  scaled_response <- predicted_response * max(bands$precip_range)
+  if (simple_title) {
+    chart_title <- species
+    y_label = "prec. var."
+  } else {
+    chart_title <- paste("Latitudinal Precipitation variability pattern", species)
+    y_label = "Precipitation variability"
+  }
+  plot <- ggplot(bands, aes(x = Lat_band, y = precip_range)) +
+    geom_point(color = "grey60") + 
+    geom_line(data = data.frame(lat_band = seq(min(bands$Lat_band), 
+                                               max(bands$Lat_band), by = 0.1),
                                 predicted_IV = scaled_response),
-              aes(x = lat_band, y = predicted_IV), values=custom_palette) +
+              aes(x = lat_band, y = predicted_IV), color = "black") +
     geom_vline(xintercept = Para(hof_model, model = best_model)$opt, color = "red", linetype = "dashed") +
-    labs(
-      title = paste("Latitudinal IV pattern", species),
-      subtitle = "",
-      x = "latitude",
-      y = "Precipitation Mean"
-    )
+    labs(title = chart_title, x = "latitude", y = y_label)
   
+  caption <- grid::textGrob("Figure 4: Sweetgum precipitation range vs. Latitude", gp = grid::gpar(fontsize = 10), hjust = 0.5)
+
+  final_plot <- gridExtra::grid.arrange(plot, caption, ncol = 1, heights = c(4, 0.5))
+
+  if (return_intercept) {
+    return(Para(hof_model, model = best_model)$opt)
+  } else {
+    print(plot)
+  }
 }
 
-hof_plot("American beech")
-#unique(iv_data$COMMON_NAME)
-
+hof_plot("sweetgum")
 ```
 
-## TODO
+Now, this process can be run with all species that have more than 30000 data points in our data.
 
-- figure out how to hide those percentages when HOF is started
-- do the same analysis for each species (in a loop)
-- do the same analysis for rainfall extremes (min and max)
-- create table for each species that shows how well the curve fit
-- with time remaining, do the same analysis for other major abiotic factors and compare them to show which has most importance in ranges
-- create discussion/conclusion
+```{r, echo=TRUE,results='hide',fig.keep='none'}
+# limit to species with above 30000 samples
+all_species <- raw_data %>%
+  group_by(COMMON_NAME) %>%
+  summarise(Count = n()) %>%
+  filter(Count > 30000) %>%
+  arrange(desc(Count))
+
+# store all plots to a list
+plots <- lapply(all_species$COMMON_NAME, hof_plot, simple_title=TRUE)
+```
+
+```{r, echo=TRUE}
+# arrange 9 to a page
+for (i in seq(1,length(plots), by = 9)){
+  grid.arrange(
+    grobs = plots[i : min(i + 8, length(plots))],
+    ncol = 3,
+    nrow = 3
+  )
+}
+```
+
+## Results
+
+### Precipitation variability vs. latitude
+
+As can be seen in the results above, many of the species increase the amount of precipitation variability they have as latitude increases, but only up to a point. It can be seen that most species have a point where they stop increasing and start decreasing. To determine if that inversion point was consistent across species, a data frame with each species' x intercept was created and the results are below.
+
+```{r, echo=TRUE,results='hide',fig.keep='none'}
+all_species <- raw_data %>%
+  group_by(COMMON_NAME) %>%
+  summarise(Count = n()) %>%
+  filter(Count > 30000) %>%
+  arrange(desc(Count))
+
+intercepts <- data.frame(
+  name = all_species$COMMON_NAME,
+  intercept = numeric(nrow(all_species))
+)
+
+for (i in 1:nrow(all_species)){
+  response <- hof_plot(all_species$COMMON_NAME[i], return_intercept=TRUE)
+  if (length(response) > 1) {
+    intercepts$intercept[i] <- response[[2]]
+  } else {
+    intercepts$intercept[i] <- response[1]
+  }
+}
+```
+
+The x intercept for all species was between 31 and 40 degrees, which is not very specific.
+
+```{r}
+summary(intercepts$intercept)
+```
+
+### Comparison to other abiotic factors
+
+Other abiotic factors that we know can be used to determine the importance of the precipitation variation seen above. The entire process was run again using temperature ranges instead. The results are below.
+
+```{r, echo=TRUE,results='hide',fig.keep='none'}
+hof_plot_temp <- function(species, simple_title=FALSE, return_intercept=FALSE){
+  single_species_grouped_by_name <- raw_data %>%
+    group_by(COMMON_NAME) %>%
+    filter(COMMON_NAME == species) %>%
+    mutate(Precip_range = Temp_warm - Temp_cold)
+  red_maple_data <- single_species_grouped_by_name %>%
+    filter(COMMON_NAME == species)
+  red_maple_data
+  lat_seq <- seq(from = floor(min(red_maple_data$LAT)), to = ceiling(max(red_maple_data$LAT)), by = 0.5)
+  lat_seq
+  bands <- data.frame(
+    Lat_band = lat_seq,
+    avg_IV = numeric(length(lat_seq))
+  )
+  bands
+  for (i in 1:length(lat_seq)){
+    lat_min <- lat_seq[i] - 0.5
+    lat_max <- lat_seq[i] + 0.5
+    band_data <- red_maple_data %>%
+      filter(LAT >= lat_min & LAT <= lat_max)
+    bands$avg_IV[i] <- mean(band_data$Precip_range, na.rm = TRUE)
+  }
+  bands
+  bands <- bands[complete.cases(bands$avg_IV),]
+  bands
+  hof_model <- HOF(
+    bands$avg_IV,
+    bands$Lat_band,
+    modeltypes = c("I","II","III","IV","V"),
+    family = gaussian,
+    bootstrap = 100,
+    test = 'AIC'
+  )
+  best_model <- pick.model(hof_model, modeltypes = c("I","II","III","IV","V"), test = 'AIC')
+  predicted_response <- predict(hof_model, model = best_model, 
+                                newdata = seq(min(bands$Lat_band), max(bands$Lat_band), by = 0.1))
+  scaled_response <- predicted_response * max(bands$avg_IV)
+  if (simple_title) {
+    chart_title <- species
+    y_label = "prec. var."
+  } else {
+    chart_title <- paste("Latitudinal Precipitation variability pattern", species)
+    y_label = "Precipitation variability"
+  }
+  final_plot <- ggplot(bands, aes(x = Lat_band, y = avg_IV)) +
+    geom_point(color = "grey60") + 
+    geom_line(data = data.frame(lat_band = seq(min(bands$Lat_band), 
+                                               max(bands$Lat_band), by = 0.1),
+                                predicted_IV = scaled_response),
+              aes(x = lat_band, y = predicted_IV), color = "black") +
+    geom_vline(xintercept = Para(hof_model, model = best_model)$opt, color = "red", linetype = "dashed") +
+    labs(title = chart_title, x = "latitude", y = y_label)
+  return_intercept<-FALSE
+  if (return_intercept) {
+    return(Para(hof_model, model = best_model)$opt)
+  } else {
+    print(final_plot)
+  }
+}
+
+all_species <- raw_data %>%
+  group_by(COMMON_NAME) %>%
+  summarise(Count = n()) %>%
+  filter(Count > 30000) %>%
+  arrange(desc(Count))
+
+# store all plots to a list
+plots <- lapply(all_species$COMMON_NAME, hof_plot_temp, simple_title=TRUE)
+```
+
+```{r, echo=TRUE,results='hide',fig.keep='all'}
+# arrange 9 to a page
+for (i in seq(1,length(plots), by = 9)){
+  grid.arrange(
+    grobs = plots[i : min(i + 8, length(plots))],
+    ncol = 3,
+    nrow = 3
+  )
+}
+```
+
+## Conclusion
+
+As can be seen in the results, mean temperature was an excellent indicator for this Rapaport Effect study. When precipitation range was compared to the results like mean temperature, it could be seen that it was clearly not a good indicator. Precipitation range is loosely correlated for most species up to a point, but after that there doesn't seem to be much correlation.
+
+## References
+
+Morin, X., & Lechowicz, M. J. (2011). Geographical and ecological patterns of range size in North American trees. Ecography, 34(6), 738-750. <a href="https://doi.org/10.1111/j.1600-0587.2010.06854.x">https://doi.org/10.1111/j.1600-0587.2010.06854.x</a>
+
+Pintor, A. F. V., Schwarzkopf, L., & Krockenberger, A. K. (2015). Rapoport’s Rule: Do climatic variability gradients shape range extent? Ecological Monographs, 85(4), 643-659. <a href="https://doi.org/10.1890/14-1643.1">https://doi.org/10.1890/14-1643.1</a>
+
+Zhu, K., Woodall, C. W., Ghosh, S., Gelfand, A. E., & Clark, J. S. (2014). Dual impacts of climate change: Forest migration and turnover through life history. Global Change Biology, 20(1), 251-264. <a href="https://doi.org/10.1111/gcb.12382">https://doi.org/10.1111/gcb.12382</a>
