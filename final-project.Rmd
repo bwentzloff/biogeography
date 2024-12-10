@@ -177,7 +177,9 @@ hof_plot <- function(species, simple_title=FALSE, return_intercept=FALSE){
     print(plot)
   }
 }
+```
 
+```{r, echo=TRUE,results='hide',fig.keep='last'}
 hof_plot("sweetgum")
 ```
 
