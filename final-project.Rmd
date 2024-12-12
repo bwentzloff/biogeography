@@ -14,6 +14,8 @@ output:
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
+<small>Markdown for this document is available <a href="https://github.com/bwentzloff/biogeography/blob/main/final-project.Rmd">here</a>.</small>
+
 ## Introduction
 
 ### Background
@@ -68,7 +70,7 @@ caption <- grid::textGrob("Figure 1: A visual layout of the eastern U.S.", gp = 
 final_plot <- gridExtra::grid.arrange(plot, caption, ncol = 1, heights = c(4, 0.5))
 ```
 
-Ranges for the various tree species in the FIA data could then be plotted on the map of the eastern U.S. Here is the range of the sweetgum species, which primarily exists in the southern part of the eastern U.S.:
+Ranges for the various tree species in the FIA data could also be plotted on the map of the eastern U.S. Here is the range specifically of the sweetgum species, which primarily exists in the southern part of the eastern U.S.:
 
 ```{r, echo=TRUE,results='hide',fig.keep='last'}
 
@@ -110,6 +112,26 @@ plot <- ggplot() +
   labs(title = paste(species_name,"precipitation variability (mm)"),x = "Longitude", y = "Latitude")
 
 caption <- grid::textGrob("Figure 3: Precipitation range of sweetgum across Eastern U.S. The lighter the blue, the higher the range of precipitation", gp = grid::gpar(fontsize = 10), hjust = 0.5)
+
+final_plot <- gridExtra::grid.arrange(plot, caption, ncol = 1, heights = c(4, 0.5))
+```
+
+Next, an overlay of the precipitation across the entire eastern U.S. can be displayed:
+
+```{r, echo=TRUE,results='hide',fig.keep='last'}
+
+all_data_grouped_by_lat_lon <- raw_data %>%
+  group_by(LAT, LON) %>%
+  mutate(Precip_range = abs(Precip_wet - Precip_dry))
+
+all_data_grouped_by_lat_lon
+plot <- ggplot() +
+  geom_sf(data = selected_states, fill = "grey", color = "lightblue") +
+  geom_point(data = all_data_grouped_by_lat_lon, aes(x = LON, y = LAT, color=Precip_range), size = 0.5) +
+  theme_minimal() +
+  labs(title = paste("precipitation variability (mm)"),x = "Longitude", y = "Latitude")
+
+caption <- grid::textGrob("Figure 4: Precipitation range of all species across Eastern U.S. The lighter the blue, the higher the range of precipitation", gp = grid::gpar(fontsize = 10), hjust = 0.5)
 
 final_plot <- gridExtra::grid.arrange(plot, caption, ncol = 1, heights = c(4, 0.5))
 ```
@@ -167,7 +189,7 @@ hof_plot <- function(species, simple_title=FALSE, return_intercept=FALSE){
     geom_vline(xintercept = Para(hof_model, model = best_model)$opt, color = "red", linetype = "dashed") +
     labs(title = chart_title, x = "latitude", y = y_label)
   
-  caption <- grid::textGrob("Figure 4: Sweetgum precipitation range vs. Latitude", gp = grid::gpar(fontsize = 10), hjust = 0.5)
+  caption <- grid::textGrob("Figure 5: Sweetgum precipitation range vs. Latitude", gp = grid::gpar(fontsize = 10), hjust = 0.5)
 
   final_plot <- gridExtra::grid.arrange(plot, caption, ncol = 1, heights = c(4, 0.5))
 
@@ -286,10 +308,10 @@ hof_plot_temp <- function(species, simple_title=FALSE, return_intercept=FALSE){
   scaled_response <- predicted_response * max(bands$avg_IV)
   if (simple_title) {
     chart_title <- species
-    y_label = "prec. var."
+    y_label = "temp range"
   } else {
     chart_title <- paste("Latitudinal Precipitation variability pattern", species)
-    y_label = "Precipitation variability"
+    y_label = "Temperature range"
   }
   final_plot <- ggplot(bands, aes(x = Lat_band, y = avg_IV)) +
     geom_point(color = "grey60") + 
